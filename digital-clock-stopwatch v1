@@ -1,0 +1,156 @@
+import { useState, useEffect, useRef } from 'react'
+import { Button } from "/components/ui/button"
+import { Card, CardContent, CardHeader, CardTitle } from "/components/ui/card"
+import { Clock, Play, Pause, RotateCcw } from 'lucide-react'
+
+export default function DigitalClockStopwatch() {
+  // Clock state
+  const [currentTime, setCurrentTime] = useState(new Date())
+  const [is24HourFormat, setIs24HourFormat] = useState(true)
+
+  // Stopwatch state
+  const [stopwatchTime, setStopwatchTime] = useState(0)
+  const [isRunning, setIsRunning] = useState(false)
+  const intervalRef = useRef<NodeJS.Timeout | null>(null)
+  const startTimeRef = useRef<number | null>(null)
+
+  // Update clock every second
+  useEffect(() => {
+    const timer = setInterval(() => {
+      setCurrentTime(new Date())
+    }, 1000)
+
+    return () => clearInterval(timer)
+  }, [])
+
+  // Stopwatch logic
+  useEffect(() => {
+    if (isRunning) {
+      startTimeRef.current = Date.now() - stopwatchTime
+      intervalRef.current = setInterval(() => {
+        setStopwatchTime(Date.now() - (startTimeRef.current || 0))
+      }, 10)
+    } else if (intervalRef.current) {
+      clearInterval(intervalRef.current)
+    }
+
+    return () => {
+      if (intervalRef.current) {
+        clearInterval(intervalRef.current)
+      }
+    }
+  }, [isRunning, stopwatchTime])
+
+  // Format time for clock display
+  const formatTime = (date: Date) => {
+    let hours = date.getHours()
+    const minutes = date.getMinutes().toString().padStart(2, '0')
+    const seconds = date.getSeconds().toString().padStart(2, '0')
+    let ampm = ''
+
+    if (!is24HourFormat) {
+      ampm = hours >= 12 ? ' PM' : ' AM'
+      hours = hours % 12
+      hours = hours ? hours : 12 // the hour '0' should be '12'
+    }
+
+    return `${hours.toString().padStart(2, '0')}:${minutes}:${seconds}${ampm}`
+  }
+
+  // Format stopwatch time
+  const formatStopwatchTime = (time: number) => {
+    const minutes = Math.floor(time / 60000)
+    const seconds = Math.floor((time % 60000) / 1000)
+    const milliseconds = Math.floor((time % 1000) / 10)
+
+    return `${minutes.toString().padStart(2, '0')}:${seconds
+      .toString()
+      .padStart(2, '0')}.${milliseconds.toString().padStart(2, '0')}`
+  }
+
+  // Stopwatch controls
+  const startStopwatch = () => {
+    setIsRunning(true)
+  }
+
+  const stopStopwatch = () => {
+    setIsRunning(false)
+  }
+
+  const resetStopwatch = () => {
+    setIsRunning(false)
+    setStopwatchTime(0)
+  }
+
+  return (
+    <div className="min-h-screen bg-gray-50 flex items-center justify-center p-4">
+      <Card className="w-full max-w-md">
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2">
+            <Clock className="w-5 h-5" />
+            <span>Digital Clock & Stopwatch</span>
+          </CardTitle>
+        </CardHeader>
+        <CardContent className="space-y-6">
+          {/* Clock Section */}
+          <div className="space-y-4">
+            <div className="flex justify-between items-center">
+              <h2 className="text-lg font-semibold">Indian Standard Time</h2>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => setIs24HourFormat(!is24HourFormat)}
+              >
+                {is24HourFormat ? 'Switch to 12-hour' : 'Switch to 24-hour'}
+              </Button>
+            </div>
+            <div className="bg-gray-100 rounded-lg p-4">
+              <div className="text-4xl font-mono font-bold text-center">
+                {formatTime(currentTime)}
+              </div>
+            </div>
+          </div>
+
+          {/* Stopwatch Section */}
+          <div className="space-y-4">
+            <h2 className="text-lg font-semibold">Stopwatch</h2>
+            <div className="bg-gray-100 rounded-lg p-4">
+              <div className="text-4xl font-mono font-bold text-center">
+                {formatStopwatchTime(stopwatchTime)}
+              </div>
+            </div>
+            <div className="flex justify-center gap-2">
+              {!isRunning ? (
+                <Button
+                  variant="default"
+                  onClick={startStopwatch}
+                  className="gap-2"
+                >
+                  <Play className="w-4 h-4" />
+                  Start
+                </Button>
+              ) : (
+                <Button
+                  variant="destructive"
+                  onClick={stopStopwatch}
+                  className="gap-2"
+                >
+                  <Pause className="w-4 h-4" />
+                  Stop
+                </Button>
+              )}
+              <Button
+                variant="outline"
+                onClick={resetStopwatch}
+                className="gap-2"
+              >
+                <RotateCcw className="w-4 h-4" />
+                Reset
+              </Button>
+            </div>
+          </div>
+        </CardContent>
+      </Card>
+    </div>
+  )
+}
