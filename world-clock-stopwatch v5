@@ -1,0 +1,192 @@
+import { useState, useEffect, useRef } from 'react'
+import { Button } from "/components/ui/button"
+import { Card, CardContent, CardHeader, CardTitle } from "/components/ui/card"
+import { Clock, Play, Pause, RotateCcw } from 'lucide-react'
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "/components/ui/select"
+
+type CountryTime = {
+  name: string
+  timezone: string
+  offset: string
+  emoji: string
+}
+
+const COUNTRIES: CountryTime[] = [
+  { name: "India", timezone: "Asia/Kolkata", offset: "IST", emoji: "🇮🇳" },
+  { name: "USA (NY)", timezone: "America/New_York", offset: "EST", emoji: "🇺🇸" },
+  { name: "France", timezone: "Europe/Paris", offset: "CET", emoji: "🇫🇷" },
+  { name: "Japan", timezone: "Asia/Tokyo", offset: "JST", emoji: "🇯🇵" },
+  { name: "Australia (SYD)", timezone: "Australia/Sydney", offset: "AEDT", emoji: "🇦🇺" },
+  { name: "Israel", timezone: "Asia/Jerusalem", offset: "IST", emoji: "🇮🇱" },
+  { name: "England", timezone: "Europe/London", offset: "GMT", emoji: "🇬🇧" },
+  { name: "Russia (Moscow)", timezone: "Europe/Moscow", offset: "MSK", emoji: "🇷🇺" }
+]
+
+export default function WorldClockStopwatch() {
+  // Clock state
+  const [currentTime, setCurrentTime] = useState(new Date())
+  const [is24HourFormat, setIs24HourFormat] = useState(true)
+  const [selectedCountry, setSelectedCountry] = useState<CountryTime>(COUNTRIES[0])
+
+  // Stopwatch state
+  const [stopwatchTime, setStopwatchTime] = useState(0)
+  const [isRunning, setIsRunning] = useState(false)
+  const intervalRef = useRef<NodeJS.Timeout | null>(null)
+  const startTimeRef = useRef<number | null>(null)
+
+  // Update clock every second
+  useEffect(() => {
+    const timer = setInterval(() => {
+      const now = new Date()
+      setCurrentTime(now)
+    }, 1000)
+
+    return () => clearInterval(timer)
+  }, [])
+
+  // Format time for specific timezone
+  const formatTimeForTimezone = (date: Date, timezone: string) => {
+    return date.toLocaleTimeString('en-US', {
+      timeZone: timezone,
+      hour12: !is24HourFormat,
+      hour: '2-digit',
+      minute: '2-digit',
+      second: '2-digit'
+    })
+  }
+
+  // Format stopwatch time (unchanged)
+  const formatStopwatchTime = (time: number) => {
+    const minutes = Math.floor(time / 60000)
+    const seconds = Math.floor((time % 60000) / 1000)
+    const milliseconds = Math.floor((time % 1000) / 10)
+    return `${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}.${milliseconds.toString().padStart(2, '0')}`
+  }
+
+  // Stopwatch controls (unchanged)
+  const startStopwatch = () => {
+    setIsRunning(true)
+    startTimeRef.current = Date.now() - stopwatchTime
+    intervalRef.current = setInterval(() => {
+      setStopwatchTime(Date.now() - (startTimeRef.current || 0))
+    }, 10)
+  }
+
+  const stopStopwatch = () => {
+    setIsRunning(false)
+    if (intervalRef.current) clearInterval(intervalRef.current)
+  }
+
+  const resetStopwatch = () => {
+    setIsRunning(false)
+    setStopwatchTime(0)
+    if (intervalRef.current) clearInterval(intervalRef.current)
+  }
+
+  return (
+    <div className="min-h-screen bg-gradient-to-br from-gray-900 to-gray-800 flex items-center justify-center p-4">
+      <Card className="w-full max-w-md bg-gray-800 border-gray-700 shadow-lg shadow-cyan-500/10">
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2 text-transparent bg-clip-text bg-gradient-to-r from-pink-400 to-rose-400">
+            <Clock className="w-5 h-5 text-pink-400" />
+            <span>World Clock & Stopwatch</span>
+          </CardTitle>
+        </CardHeader>
+        <CardContent className="space-y-6">
+          {/* Clock Section */}
+          <div className="space-y-4">
+            <div className="flex justify-between items-center">
+              <Select
+                value={selectedCountry.name}
+                onValueChange={(value) => {
+                  const country = COUNTRIES.find(c => c.name === value) || COUNTRIES[0]
+                  setSelectedCountry(country)
+                }}
+              >
+                <SelectTrigger className="w-[180px] bg-gray-700 border-gray-600 text-gray-200">
+                  <SelectValue placeholder="Select country" />
+                </SelectTrigger>
+                <SelectContent className="bg-gray-700 border-gray-600">
+                  {COUNTRIES.map((country) => (
+                    <SelectItem
+                      key={country.name}
+                      value={country.name}
+                      className="hover:bg-gray-600"
+                    >
+                      <span className="mr-2">{country.emoji}</span>
+                      {country.name} ({country.offset})
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+              <Button
+                variant="outline"
+                size="sm"
+                className="bg-gray-700 border-gray-600 text-pink-300 hover:bg-gray-600 hover:text-pink-200 hover:border-pink-400 transition-all"
+                onClick={() => setIs24HourFormat(!is24HourFormat)}
+              >
+                {is24HourFormat ? '12-hour' : '24-hour'}
+              </Button>
+            </div>
+            <div className="bg-gradient-to-br from-gray-800 to-gray-700 rounded-lg p-4 border border-gray-600 shadow-inner shadow-pink-500/20">
+              <div className="flex justify-between items-center mb-1">
+                <span className="text-sm font-medium text-gray-400">
+                  {selectedCountry.emoji} {selectedCountry.name}
+                </span>
+                <span className="text-sm font-medium text-gray-400">
+                  {selectedCountry.offset}
+                </span>
+              </div>
+              <div className="text-4xl font-mono font-bold text-center text-transparent bg-clip-text bg-gradient-to-r from-pink-400 to-rose-500">
+                {formatTimeForTimezone(currentTime, selectedCountry.timezone)}
+              </div>
+            </div>
+          </div>
+
+          {/* Stopwatch Section (unchanged) */}
+          <div className="space-y-4">
+            <h2 className="text-lg font-semibold text-gray-300">Stopwatch</h2>
+            <div className="bg-gradient-to-br from-gray-800 to-gray-700 rounded-lg p-4 border border-gray-600 shadow-inner shadow-purple-500/20">
+              <div className="text-4xl font-mono font-bold text-center text-transparent bg-clip-text bg-gradient-to-r from-purple-400 to-pink-400">
+                {formatStopwatchTime(stopwatchTime)}
+              </div>
+            </div>
+            <div className="flex justify-center gap-2">
+              {!isRunning ? (
+                <Button
+                  onClick={startStopwatch}
+                  className="gap-2 bg-gradient-to-r from-cyan-500 to-blue-500 text-white hover:from-cyan-600 hover:to-blue-600 shadow-lg shadow-cyan-500/30 transition-all"
+                >
+                  <Play className="w-4 h-4" />
+                  Start
+                </Button>
+              ) : (
+                <Button
+                  onClick={stopStopwatch}
+                  className="gap-2 bg-gradient-to-r from-pink-500 to-rose-500 text-white hover:from-pink-600 hover:to-rose-600 shadow-lg shadow-pink-500/30 transition-all"
+                >
+                  <Pause className="w-4 h-4" />
+                  Stop
+                </Button>
+              )}
+              <Button
+                variant="outline"
+                onClick={resetStopwatch}
+                className="gap-2 border-gray-500 text-gray-300 hover:bg-gray-700 hover:text-white hover:border-cyan-300 transition-all"
+              >
+                <RotateCcw className="w-4 h-4" />
+                Reset
+              </Button>
+            </div>
+          </div>
+        </CardContent>
+      </Card>
+    </div>
+  )
+}
